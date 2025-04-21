@@ -1,6 +1,7 @@
 // AWS SDK for JavaScript v2.1692.0
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // License at https://sdk.amazonaws.com/js/BUNDLE_LICENSE.txt
+// YS: Added support for logging AWS responses
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
   module.exports={
     "version": "2.0",
@@ -282166,31 +282167,43 @@
           var time = resp.request.service.getSkewCorrectedDate().getTime();
           var delta = (time - req.startTime.getTime()) / 1000;
           var ansi = logger.isTTY ? true : false;
+          var logResponse = logger.logResponse;
+          var logCredentials = logger.logCredentials;
           var status = resp.httpResponse.statusCode;
           var censoredParams = req.params;
           if (
             req.service.api.operations &&
-                req.service.api.operations[req.operation] &&
-                req.service.api.operations[req.operation].input
+            req.service.api.operations[req.operation] &&
+            req.service.api.operations[req.operation].input
           ) {
             var inputShape = req.service.api.operations[req.operation].input;
             censoredParams = filterSensitiveLog(inputShape, req.params);
           }
-          var params = require('util').inspect(censoredParams, true, null);
+          // YS: Do not log hidden fields
+          var params = require('util').inspect(censoredParams, !true, null);
           var message = '';
           if (ansi) message += '\x1B[33m';
           message += '[AWS ' + req.service.serviceIdentifier + ' ' + status;
+          if (logCredentials) {
+            // YS: log the credentials for the mock recorder
+            var credentials = req.service.config.credentials;
+            message += AWS.util.crypto.md5(credentials.accessKeyId + credentials.secretAccessKey, 'hex');
+          }
           message += ' ' + delta.toString() + 's ' + resp.retryCount + ' retries]';
           if (ansi) message += '\x1B[0;1m';
           message += ' ' + AWS.util.string.lowerFirst(req.operation);
           message += '(' + params + ')';
           if (ansi) message += '\x1B[0m';
+          if (logResponse) {
+            // YS: Get the response as well
+            message += ' -> ' + JSON.stringify(resp.data ?? resp.error ?? '');
+          }
           return message;
         }
 
         var line = buildMessage();
         if (typeof logger.log === 'function') {
-          logger.log(line);
+          logger.log(line.replaceAll('\n', ''));
         } else if (typeof logger.write === 'function') {
           logger.write(line + '\n');
         }
