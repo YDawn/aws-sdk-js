@@ -282187,7 +282187,7 @@
           if (logCredentials) {
             // YS: log the credentials for the mock recorder
             var credentials = req.service.config.credentials;
-            message += AWS.util.crypto.md5(credentials.accessKeyId + credentials.secretAccessKey, 'hex');
+            message += ' ' + AWS.util.crypto.md5(credentials.accessKeyId + credentials.secretAccessKey, 'hex');
           }
           message += ' ' + delta.toString() + 's ' + resp.retryCount + ' retries]';
           if (ansi) message += '\x1B[0;1m';
